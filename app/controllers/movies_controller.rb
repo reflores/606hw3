@@ -13,6 +13,9 @@ class MoviesController < ApplicationController
   def checked
     if params.key?(:ratings)
       @checked = params[:ratings].keys
+      session[:ratings] = Hash[@checked.map{|x| [x, 1]}]
+    elsif session.key?(:ratings)
+      @checked = session[:ratings]
     else
       @checked = @all_ratings
     end
@@ -29,17 +32,38 @@ class MoviesController < ApplicationController
   end
 
   def index
-    if params.key?(:ratings)
+    if params.key?(:ratings) and params[:ratings] != [] #not using blanked out checkboxes
       checked
       @movies = Movie.where({rating: params['ratings'].keys})
+    elsif session.key?(:ratings)
+      checked
+      @movies = Movie.where({rating: session['ratings']})
     else
       @movies = Movie.all
     end
+    
     if params.key?(:sort)
       field = params[:sort]
+      session[:sort] = field
       @movies = @movies.order(field)
       @title = field == 'title'
       @date = field == 'release_date'
+    elsif session.key?(:sort)
+      field = session[:sort]
+      @movies = @movies.order(field)
+      @title = field == 'title'
+      @date = field == 'release_date'
+    end
+    
+    if !params.key?(:sort) and !params.key?(:ratings) and session.key?(:sort) and session.key?(:ratings)
+      flash.keep
+      redirect_to movies_path(:ratings => session[:ratings], :sort => session[:sort])
+    elsif !params.key?(:sort) and session.key?(:sort)
+      flash.keep
+      redirect_to movies_path(:ratings => params[:ratings], :sort => session[:sort])
+    elsif !params.key?(:ratings) and session.key?(:ratings)
+      flash.keep
+      redirect_to movies_path(:ratings => session[:ratings], :sort => params[:sort])
     end
   end
 
