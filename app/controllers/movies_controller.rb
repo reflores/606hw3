@@ -1,5 +1,23 @@
 class MoviesController < ApplicationController
 
+  def initialize
+    @all_ratings = Movie.select('DISTINCT rating').map(&:rating)
+    @checked = @all_ratings
+    super
+  end
+
+  def all_ratings
+    @all_ratings = Movie.select('DISTINCT rating').map(&:rating)
+  end
+  
+  def checked
+    if params.key?(:ratings)
+      @checked = params[:ratings].keys
+    else
+      @checked = @all_ratings
+    end
+  end
+
   def movie_params
     params.require(:movie).permit(:title, :rating, :description, :release_date)
   end
@@ -11,13 +29,17 @@ class MoviesController < ApplicationController
   end
 
   def index
-    if params.key?(:sort)
-      field = params[:sort]
-      @movies = Movie.order(field)
-      @title = field == 'title'
-      @date = field == 'release_date'
+    if params.key?(:ratings)
+      checked
+      @movies = Movie.where({rating: params['ratings'].keys})
     else
       @movies = Movie.all
+    end
+    if params.key?(:sort)
+      field = params[:sort]
+      @movies = @movies.order(field)
+      @title = field == 'title'
+      @date = field == 'release_date'
     end
   end
 
