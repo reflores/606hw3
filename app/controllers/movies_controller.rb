@@ -13,7 +13,7 @@ class MoviesController < ApplicationController
   def checked
     if params.key?(:ratings)
       @checked = params[:ratings].keys
-      session[:ratings] = Hash[@checked.map{|x| [x, 1]}]
+      session[:ratings] = Hash[@checked.map{|rating| [rating, 1]}]
     elsif session.key?(:ratings)
       @checked = session[:ratings]
     else
@@ -30,8 +30,8 @@ class MoviesController < ApplicationController
     @movie = Movie.find(id) # look up movie by unique ID
     # will render app/views/movies/show.<extension> by default
   end
-
-  def index
+  
+  def set_movies
     if params.key?(:ratings) and params[:ratings] != [] #not using blanked out checkboxes
       checked
       @movies = Movie.where({rating: params['ratings'].keys})
@@ -41,30 +41,27 @@ class MoviesController < ApplicationController
     else
       @movies = Movie.all
     end
-    
-    if params.key?(:sort)
-      field = params[:sort]
-      session[:sort] = field
-      @movies = @movies.order(field)
-      @title = field == 'title'
-      @date = field == 'release_date'
-    elsif session.key?(:sort)
-      field = session[:sort]
-      @movies = @movies.order(field)
-      @title = field == 'title'
-      @date = field == 'release_date'
+  end
+
+  def redirect?
+    sort = params.key?(:sort)? params[:sort] : session.key?(:sort) ? session[:sort] : ""
+    ratings = params.key?(:ratings)? params[:ratings] : session.key?(:ratings) ? session[:ratings] : ""
+    if sort != "" and ratings != ""
+      flash.keep
+      redirect_to movies_path(:ratings => ratings, :sort => sort)
     end
-    
-    if !params.key?(:sort) and !params.key?(:ratings) and session.key?(:sort) and session.key?(:ratings)
-      flash.keep
-      redirect_to movies_path(:ratings => session[:ratings], :sort => session[:sort])
-    elsif !params.key?(:sort) and session.key?(:sort)
-      flash.keep
-      redirect_to movies_path(:ratings => params[:ratings], :sort => session[:sort])
-    elsif !params.key?(:ratings) and session.key?(:ratings)
-      flash.keep
-      redirect_to movies_path(:ratings => session[:ratings], :sort => params[:sort])
+  end
+
+  def index
+    set_movies
+    sort_field = params.key?(:sort)? params[:sort] : session.key?(:sort) ? session[:sort] : ""
+    if sort_field != ""
+      session[:sort] = sort_field #reset if was already set...
+      @movies = @movies.order(sort_field)
+      @title = sort_field == 'title'
+      @date = sort_field == 'release_date'
     end
+    redirect?
   end
 
   def new
